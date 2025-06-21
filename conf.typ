@@ -324,13 +324,10 @@
         align(center, it.body)
       } else if (
         it.body.has("children")
-          and it.body.at("children").first() == [ПРИЛОЖЕНИЕ]
+          and it.body.children.at(0).value == "ssu-appendix-part"
       ) {
-        let children = it.body.at("children")
-        // let letter = children.at(2)
-        let letter = "aboba"
-        let title = children.at(2)
-        align(center, [ПРИЛОЖЕНИЕ #letter \ #title])
+        let letter = counter(heading).display(it.numbering)
+        align(center, [ПРИЛОЖЕНИЕ #letter \ #it.body])
       } else {
         pad(left: indent, it)
       }
@@ -346,29 +343,8 @@
         let heading-text = it
           .at("element", default: (:))
           .at("body", default: "")
-        if (
-          heading-text.has("children")
-            and heading-text.at("children").first() == [ПРИЛОЖЕНИЕ]
-        ) {
-          // context {
-          //   // let letter = "aboba"
-          //   // let letter = counter(heading) //   .at(it.at("element"))
-          //   //   .display(it.at("element").numbering)
-          //   let letter = counter(heading).display()
-          //   [#grid(
-          //       columns: (auto, 1pt, 1fr, 1pt, auto),
-          //       align: (left, center, right),
-          //       row-gutter: 0pt,
-          //       rows: auto,
-          //       inset: 0pt,
-          //       [#it.element.body], none, it.fill, none, it.page(),
-          //     )]
-          // }
+        if not strings.caps_headings.contains(heading-text) {
           return it
-        } else if not strings.caps_headings.contains(heading-text) {
-          // [#it.fields() #heading.fields()]
-          it
-          return
         } else {
           grid(
             columns: (auto, 1pt, 1fr, 1pt, auto),
@@ -518,25 +494,19 @@
 
 #let appendix-letters = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ"
 #let appendix-numbering(..nums) = {
+  let msg = "Перед созданием приложений нужно создать их начало (#appendix-start) ровно один раз"
+  assert(query(<meta:ssu-appendix>).len() == 1, message: msg)
   let start = counter(heading).at(<meta:ssu-appendix>).first()
-  let number = nums.pos().first() - start
-  [ПРИЛОЖЕНИЕ #appendix-letters.clusters().at(number, default: str(number))]
-}
-
-#let appendix-supplement(h) = {
-  [ABOBA]
+  let number = nums.pos().first() - start - 1
+  appendix-letters.clusters().at(number, default: str(number))
 }
 
 #let appendix(title) = {
-  // context {
-  //   let number = counter(heading).display(appendix-numbering)
-  // }
   heading(
     numbering: appendix-numbering,
-    supplement: appendix-supplement,
+    supplement: "",
     outlined: true,
-    // [ПРИЛОЖЕНИЕ #number #title],
-    [ПРИЛОЖЕНИЕ #title],
+    [#metadata("ssu-appendix-part")#title],
   )
 }
 
