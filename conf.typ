@@ -1,5 +1,6 @@
 #import "@preview/ctheorems:1.1.3": *
-#import "@preview/headcount:0.1.0": *
+#import "@preview/zebraw:0.5.5": zebraw, zebraw-init, zebraw-themes
+#import "@preview/subpar:0.2.2"
 
 /*
  * Примечания:
@@ -40,6 +41,7 @@
     plural: "студентов",
   ),
   caps_headings: (
+    [ОПРЕДЕЛЕНИЯ, ОБОЗНАЧЕНИЯ И СОКРАЩЕНИЯ],
     [СОДЕРЖАНИЕ],
     [ВВЕДЕНИЕ],
     [ЗАКЛЮЧЕНИЕ],
@@ -64,12 +66,28 @@
 // Переменная отвечающая за размер отступа красной строки
 #let indent = 1.25cm
 #let font_size = 14pt
+#let figure_font_size = font_size - 2pt
 // #let linespace = font_size
 #let line_spacing = 1.75em / 2
 #let styled = [#set text(red)].func()
 #let space = [ ].func()
 #let sequence = [].func()
 
+#let code_font_size = font_size - 2pt
+// TODO: надо выяснить сколько нужно приплюсовывать к -indent без хардкода
+#let code_block_move = -indent + 11pt
+
+#let code-block-raw(code) = {
+  set text(size: code_font_size)
+  // TODO: нужно выяснить почему нужно переоборачивать raw, чтобы размер был
+  // правильным
+  move(dx: code_block_move, zebraw(raw(block: true, code.text)))
+}
+
+#let code-block(..args, code) = {
+  set text(size: code_font_size)
+  move(dx: code_block_move, zebraw(..args, code))
+}
 
 #let modules = (
   /*
@@ -343,7 +361,19 @@
         let heading-text = it
           .at("element", default: (:))
           .at("body", default: "")
-        if not strings.caps_headings.contains(heading-text) {
+        if (
+          it.element.body.has("children")
+            and it.element.body.children.at(0).value == "ssu-appendix-part"
+        ) {
+          return grid(
+            columns: (auto, 1pt, 1fr, 1pt, auto),
+            align: (left, center, right),
+            row-gutter: 0pt,
+            rows: auto,
+            inset: 0pt,
+            [ПРИЛОЖЕНИЕ #it.prefix() #heading-text], none, it.fill, none, it.page(),
+          )
+        } else if not strings.caps_headings.contains(heading-text) {
           return it
         } else {
           grid(
@@ -382,27 +412,7 @@
 
       show: thmrules.with(qed-symbol: $square$)
       show heading: self.document.apply_heading_styles
-      show raw.where(block: true): it => {
-        set par(justify: false)
-        grid(
-          columns: (100%, 100%),
-          column-gutter: -100% - 1em,
-          block(
-            width: 100%,
-            inset: 1em,
-            for (i, line) in it.text.split("\n").enumerate() {
-              box(
-                width: 0pt,
-                align(right, str(i + 1) + h(2em)),
-              )
-              hide(line)
-              linebreak()
-            },
-          ),
-          block(width: 100%, inset: 1em, it),
-        )
-      }
-
+      show raw.where(block: true): code-block-raw
 
       set par(
         // Выравнивание по ширине
@@ -419,7 +429,7 @@
       }
 
       // Оформление элементов содержимого документа
-      set heading(numbering: "1.1")
+      set heading(numbering: "1.1", hanging-indent: -indent, supplement: "")
       set page(
         footer: context [
           #h(1fr)
@@ -427,12 +437,18 @@
         ],
       )
       set page(numbering: "1")
-      set math.equation(numbering: "(1)", supplement: [])
+      set math.equation(numbering: "(1)", supplement: "")
+
+      set figure(supplement: "")
       show figure.where(kind: image): set figure(supplement: "Рисунок")
       show figure.where(kind: table): set figure(supplement: "Таблица")
       show figure.where(kind: table): set figure.caption(position: top)
+      show figure.where(kind: table): set text(size: figure_font_size)
       show figure.caption.where(kind: table): set align(left)
+      show figure.caption: set text(size: figure_font_size)
       set figure.caption(separator: [ -- ])
+
+      set terms(separator: [ --- ])
 
       set quote(block: true)
 
@@ -479,20 +495,24 @@
   ),
 )
 
+#let defabbr = {
+  [#heading(numbering: none, outlined: true, [ОПРЕДЕЛЕНИЯ, ОБОЗНАЧЕНИЯ И СОКРАЩЕНИЯ]) <defabbr>]
+}
+
 #let intro = {
   [#heading(numbering: none, outlined: true, [ВВЕДЕНИЕ]) <intro>]
 }
 
 
 #let conclusion = {
-  heading(numbering: none, outlined: true, [ЗАКЛЮЧЕНИЕ])
+  [#heading(numbering: none, outlined: true, [ЗАКЛЮЧЕНИЕ]) <conclusion>]
 }
 
 #let appendix-start = {
   [#metadata("Start of appendix") <meta:ssu-appendix>]
 }
 
-#let appendix-letters = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ"
+#let appendix-letters = "АБВГДЕЖЗИКЛМНПРСТУФХЦШЩЭЮЯABCDEFGHJKLMNPQRSTUVWXYZ"
 #let appendix-numbering(..nums) = {
   let msg = "Перед созданием приложений нужно создать их начало (#appendix-start) ровно один раз"
   assert(query(<meta:ssu-appendix>).len() == 1, message: msg)
@@ -542,5 +562,8 @@
   info.title = title
   info.type = type
   settings.title_page = settings.at("title_page", default: (:))
-  (modules.document.make)(modules, info: info, settings, doc)
+  (modules.document.make)(modules, info: info, settings, [
+    #show: zebraw-init.with(background-color: auto, hanging-indent: true)
+    #doc
+  ])
 }
