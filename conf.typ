@@ -340,12 +340,6 @@
         strings.caps_headings.contains(it.body)
       ) {
         align(center, it.body)
-      } else if (
-        it.body.has("children")
-          and it.body.children.at(0).value == "ssu-appendix-part"
-      ) {
-        let letter = counter(heading).display(it.numbering)
-        align(center, [ПРИЛОЖЕНИЕ #letter \ #it.body])
       } else {
         pad(left: indent, it)
       }
@@ -361,10 +355,7 @@
         let heading-text = it
           .at("element", default: (:))
           .at("body", default: "")
-        if (
-          it.element.body.has("children")
-            and it.element.body.children.at(0).value == "ssu-appendix-part"
-        ) {
+        if (state("annex", false).at(it.element.location())) {
           return grid(
             columns: (auto, 1pt, 1fr, 1pt, auto),
             align: (left, center, right),
@@ -508,26 +499,33 @@
   [#heading(numbering: none, outlined: true, [ЗАКЛЮЧЕНИЕ]) <conclusion>]
 }
 
-#let appendix-start = {
-  [#metadata("Start of appendix") <meta:ssu-appendix>]
+#let annex-letters = "АБВГДЕЖЗИКЛМНПРСТУФХЦШЩЭЮЯABCDEFGHJKLMNPQRSTUVWXYZ"
+#let annex-numbering(..nums) = {
+  let number = nums.pos().first() - 1
+  annex-letters.clusters().at(number, default: str(number))
 }
 
-#let appendix-letters = "АБВГДЕЖЗИКЛМНПРСТУФХЦШЩЭЮЯABCDEFGHJKLMNPQRSTUVWXYZ"
-#let appendix-numbering(..nums) = {
-  let msg = "Перед созданием приложений нужно создать их начало (#appendix-start) ровно один раз"
-  assert(query(<meta:ssu-appendix>).len() == 1, message: msg)
-  let start = counter(heading).at(<meta:ssu-appendix>).first()
-  let number = nums.pos().first() - start - 1
-  appendix-letters.clusters().at(number, default: str(number))
-}
-
-#let appendix(title) = {
-  heading(
-    numbering: appendix-numbering,
+#let annexes-start(it) = {
+  set heading(
+    numbering: annex-numbering,
     supplement: "",
     outlined: true,
-    [#metadata("ssu-appendix-part")#title],
   )
+  set align(center)
+
+  show heading: it => {
+    if it.depth == 1 {
+      pagebreak(weak: true)
+    }
+    set text(size: font_size)
+    let letter = counter(heading).display(annex-numbering)
+    [ПРИЛОЖЕНИЕ #letter \ #it.body #v(line_spacing / 2)]
+  }
+
+  state("annex").update(true)
+  counter(heading).update(0)
+
+  it
 }
 
 #let thm-format = thmplain.with(
